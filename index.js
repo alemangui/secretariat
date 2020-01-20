@@ -272,7 +272,7 @@ app.get('/users', async (req, res) => {
   }
 });
 
-const emailWithMetadataMemoized = PromiseMemoize(
+const usersWithMetadataMemoized = PromiseMemoize(
   async () => {
     const [accounts, redirections, users] = await Promise.all([
       BetaGouv.accounts(),
@@ -298,12 +298,14 @@ const emailWithMetadataMemoized = PromiseMemoize(
 
       return {
         email: email,
+        id: id,
         github: user != undefined,
         redirections: redirections.reduce(
           (acc, r) => (r.from === email ? [...acc, r.to] : acc),
           []
         ),
         account: accounts.includes(id),
+        endDate: user.end,
         expired:
           user &&
           user.end &&
@@ -318,7 +320,7 @@ const emailWithMetadataMemoized = PromiseMemoize(
 
 app.get('/emails', async (req, res) => {
   try {
-    const emails = await emailWithMetadataMemoized();
+    const emails = await usersWithMetadataMemoized();
 
     res.render('emails', {
       user: req.user,
@@ -332,6 +334,34 @@ app.get('/emails', async (req, res) => {
     console.error(err);
 
     res.render('emails', {
+      errors: ['Erreur interne'],
+      user: req.user,
+      partials: {
+        header: 'header',
+        footer: 'footer'
+      }
+    });
+  }
+});
+
+app.get('/expired', async (req, res) => {
+  try {
+    const users = await usersWithMetadataMemoized();
+
+    usersExpirated = users.filter(user => user.expired)
+
+    res.render('expirated', {
+      user: req.user,
+      usersExpirated,
+      partials: {
+        header: 'header',
+        footer: 'footer'
+      }
+    });
+  } catch (err) {
+    console.error(err);
+
+    res.render('expirated', {
       errors: ['Erreur interne'],
       user: req.user,
       partials: {
